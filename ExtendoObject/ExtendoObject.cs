@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Dynamic;
 using System.Linq;
+using System.Runtime.Remoting.Messaging;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
@@ -15,12 +16,21 @@ namespace ExtendoObject
 
         public ExtendoObject(object instance)
         {
-            _instance = Mapper.Map<ExpandoObject>(instance);
+            _instance = instance != null ? Mapper.Map<ExpandoObject>(instance) : new ExpandoObject();
         }
 
         public override bool TryGetMember(GetMemberBinder binder, out object result)
         {
-            result = _instance[binder.Name];
+            object childObj;
+            
+            _instance.TryGetValue(binder.Name, out childObj);
+            var t = childObj?.GetType() ?? typeof(object);
+
+            if (t.IsClass && t != typeof (string))
+                childObj = childObj as ExtendoObject ?? new ExtendoObject(childObj);
+
+            _instance[binder.Name] = result = childObj;
+
             return true;
         }
 
